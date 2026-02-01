@@ -1,0 +1,7 @@
+{
+  "name": "Sherlock AI Detective",
+  "description": "A multimodal AI detective that analyzes visual evidence and behavior using Sherlock-style reasoning. Features real-time camera analysis, session memory, and cinematic HUD overlays.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
