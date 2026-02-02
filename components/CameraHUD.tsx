@@ -191,8 +191,8 @@ const CameraHUD: React.FC<CameraHUDProps> = ({ onCapture, analysisResults, isAna
         <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-sky-500/40" />
 
         {/* Deduction Evidence Bounding Boxes */}
-        {previewUrl && analysisResults?.deductions.map((d, i) => (
-          d.evidence.map((ev, ei) => (
+        {previewUrl && analysisResults?.deductions?.map((d, i) => (
+          d.evidence?.map((ev, ei) => (
             <div 
               key={`${i}-${ei}`}
               className="absolute border border-sky-400/60 bg-sky-400/5 transition-all duration-1000 animate-fadeIn"

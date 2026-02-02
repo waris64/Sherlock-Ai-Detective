@@ -156,7 +156,7 @@ const App: React.FC = () => {
             </div>
             
             <div className="p-5 space-y-4 overflow-y-auto max-h-[500px] lg:max-h-none custom-scrollbar">
-              {currentAnalysis?.deductions.map((d, i) => (
+              {currentAnalysis?.deductions?.map((d, i) => (
                 <div 
                   key={i}
                   onClick={() => setActiveDeduction(activeDeduction === i ? null : i)}

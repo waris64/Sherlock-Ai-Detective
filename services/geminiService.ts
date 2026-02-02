@@ -16,13 +16,13 @@ Use the googleSearch tool for factual grounding of products or locations.
 Output format must be strictly JSON. No markdown preamble.`;
 
 async function callGemini(
-  modelName: 'gemini-3-pro-preview' | 'gemini-3-flash-preview',
+  modelName: 'gemini-2.5-flash' | 'gemini-1.5-flash' | 'gemini-1.5-pro',
   base64Image: string,
   prompt: string,
   apiKey: string
 ): Promise<SherlockAnalysis> {
   const ai = new GoogleGenAI({ apiKey });
-  
+
   const response = await ai.models.generateContent({
     model: modelName,
     contents: [
@@ -36,8 +36,8 @@ async function callGemini(
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
       // Flash has lower reasoning depth than Pro but is much faster and has higher quota
-      thinkingConfig: { thinkingBudget: modelName === 'gemini-3-pro-preview' ? 1500 : 1000 },
-      tools: [{ googleSearch: {} }],
+      // @ts-ignore - thinkingConfig is experimental
+      thinkingConfig: { includeThoughts: true, thinkingBudget: modelName === 'gemini-1.5-pro' ? 1500 : 1000 },
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -78,12 +78,12 @@ async function callGemini(
                   }
                 }
               }
-            },
-            final_assessment: { type: Type.STRING },
-            session_memory: { type: Type.ARRAY, items: { type: Type.STRING } }
+            }
           },
-          required: ["session_id", "scan_data", "deductions", "final_assessment"]
-        }
+          final_assessment: { type: Type.STRING },
+          session_memory: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["session_id", "scan_data", "deductions", "final_assessment"]
       }
     }
   });
@@ -91,9 +91,9 @@ async function callGemini(
   const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
   let text = response.text || '{}';
   text = text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-  
+
   let parsed = JSON.parse(text) as SherlockAnalysis;
-  
+
   if (groundingChunks && parsed.deductions) {
     parsed.deductions = parsed.deductions.map(d => ({
       ...d,
@@ -111,7 +111,7 @@ export async function analyzeEvidence(
   sessionId: string,
   previousMemory: string[] = []
 ): Promise<SherlockAnalysis> {
-  const apiKey = process.env.API_KEY || '';
+  const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY || '';
   const prompt = `Perform a deep behavioral scan on this subject. 
   Current Session: ${sessionId}
   Context from previous observations: ${previousMemory.join(' | ')}
@@ -121,18 +121,18 @@ export async function analyzeEvidence(
 
   try {
     // Attempt with Pro first for high-quality detective work
-    return await callGemini('gemini-3-pro-preview', base64Image, prompt, apiKey);
+    return await callGemini('gemini-2.5-flash', base64Image, prompt, apiKey);
   } catch (err: any) {
     // If quota is exhausted (429), fall back to Flash model immediately
     if (err.message?.includes('RESOURCE_EXHAUSTED') || err.status === 429 || (err.error && err.error.code === 429)) {
       console.warn("Sherlock: Pro model quota exhausted. Falling back to Flash engine for continuity.");
       try {
-        return await callGemini('gemini-3-flash-preview', base64Image, prompt, apiKey);
+        return await callGemini('gemini-1.5-flash', base64Image, prompt, apiKey);
       } catch (fallbackErr: any) {
         throw new Error("QUOTA_EXHAUSTED: Both reasoning engines are at capacity. Please try again later.");
       }
     }
-    
+
     console.error("Gemini Analysis Error:", err);
     throw err;
   }
